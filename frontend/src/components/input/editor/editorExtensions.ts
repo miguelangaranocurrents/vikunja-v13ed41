@@ -68,6 +68,36 @@ function parseAttachmentUrl(url: unknown): AttachmentRef | null {
 	}
 }
 
+// Plain-text clipboard output that keeps list markers instead of flattening items into bare lines.
+function serializeFragmentAsText(fragment: Fragment, indent = ''): string {
+	const blocks: string[] = []
+	fragment.forEach(node => {
+		const name = node.type.name
+		if (name === 'bulletList' || name === 'orderedList' || name === 'taskList') {
+			const start = name === 'orderedList' ? Number(node.attrs.start ?? 1) : 1
+			const lines: string[] = []
+			node.forEach((item, _offset, index) => {
+				let marker = '- '
+				if (name === 'orderedList') {
+					marker = `${start + index}. `
+				} else if (name === 'taskList') {
+					marker = item.attrs.checked ? '- [x] ' : '- [ ] '
+				}
+				const inner = serializeFragmentAsText(item.content, indent + '  ')
+				lines.push(indent + marker + inner.replace(/^\s+/, ''))
+			})
+			blocks.push(lines.join('\n'))
+		} else if (node.isTextblock) {
+			blocks.push(indent && blocks.length > 0 ? indent + node.textContent : node.textContent)
+		} else if (node.isLeaf) {
+			blocks.push(node.textContent)
+		} else {
+			blocks.push(serializeFragmentAsText(node.content, indent))
+		}
+	})
+	return blocks.join(indent ? '\n' : '\n\n')
+}
+
 export interface EditorExtensionDeps {
 	t: (key: string) => string
 	isEditing: Ref<boolean>
@@ -233,6 +263,7 @@ export function createEditorExtensions(deps: EditorExtensionDeps): Extensions {
 					props: {
 						clipboardParser: createClipboardParser(this.editor.schema),
 						transformPasted: slice => repairSliceContent(slice),
+						clipboardTextSerializer: slice => serializeFragmentAsText(slice.content),
 
 						handlePaste: (view, event) => {
 

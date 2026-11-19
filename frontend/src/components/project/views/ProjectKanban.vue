@@ -352,6 +352,9 @@ const DRAG_OPTIONS = {
 	animation: 150,
 	ghostClass: 'ghost',
 	dragClass: 'task-dragging',
+	// start auto-scrolling the board well before the pointer reaches its edge
+	scrollSensitivity: 100,
+	scrollSpeed: 20,
 	delayOnTouchOnly: true,
 	delay: 1000,
 } as const
